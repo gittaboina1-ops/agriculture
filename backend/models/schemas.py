@@ -89,3 +89,52 @@ class FarmerQueryResponse(BaseModel):
     data_quality_warnings: List[Dict[str, Any]]
     subgraph: GraphData
     evaluation_metrics: Dict[str, Any]
+    generation_mode: Optional[str] = "grounded_rule_engine"
+    provider: Optional[str] = "fallback"
+    model: Optional[str] = None
+    fallback_reason: Optional[str] = None
+
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    confirm_password: Optional[str] = None
+    role: Optional[str] = "farmer"
+    admin_code: Optional[str] = None
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class UserInfo(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserInfo
+
+class TranslationRequest(BaseModel):
+    text: Optional[str] = None
+    target_language: str = "Telugu"
+    result: Optional[Dict[str, Any]] = None
+
+class TranslationResponse(BaseModel):
+    translated_text: Optional[str] = None
+    target_language: str
+    translated_result: Optional[Dict[str, Any]] = None
+
+class UploadResourceRequest(BaseModel):
+    filename: str
+    file_content_base64: str
+    title: Optional[str] = None
+    source_type: Optional[str] = "Research Paper"
+    authors: Optional[str] = "Unknown Author"
+    publication_year: Optional[int] = 2026
+    confidence_score: Optional[float] = 0.92
+    process_immediately: Optional[bool] = True
+
+

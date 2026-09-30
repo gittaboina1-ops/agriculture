@@ -1,121 +1,156 @@
-# AgriGraph (PNA1) — Agritech & Rural Innovation
+# AgriGraph (PNA1) — Terminal-First Agricultural Knowledge Pipeline
 
-> Dynamic Agricultural Knowledge Graph connecting crops, diseases, treatments, and environmental telemetry while tracking source provenance and surfacing conflicting evidence.
-
----
-
-## 🌟 Hackathon Scenario Demo Flow (3-Minute Tour)
-
-1. **Dashboard Overview (`/`)**:
-   - Inspect key graph metrics: 6 Crops, 6 Diseases, 7 Treatments, 7 Sources, 25 Relationships across 45 Knowledge Nodes.
-   - Note the **Provenance Coverage (83.3%)**, **1 Flagged Conflict**, and **3 Blocked Adversarial Sensor Readings**.
-2. **Farmer Scenario Query**:
-   - Click **"Launch Farmer Scenario"** or navigate to **Farmer Query**.
-   - Execute the target prompt:
-     > *"Why is my tomato crop at high disease risk and what evidence supports this?"*
-   - Observe the multi-layered response:
-     - **Agricultural Insight**: Explains high vulnerability to *Early Blight (Alternaria solani)* driven by sustained microclimate wetness.
-     - **Contributing Factors**: Explains the pathogen spore biology (>80% humidity, 24–30°C for >8 hrs) and field observations (35% concentric target lesion rate in Plot 4A).
-     - **Supporting Evidence**: Sourced graph triples (`Tomato -[:SUSCEPTIBLE_TO]-> Early Blight`, `Early Blight -[:ASSOCIATED_WITH]-> Humid Warm Monsoon`).
-     - **Source Lineage**: Direct citations to research paper `DOC_001` and farmer advisory `DOC_007`.
-     - **Conflicting Evidence Alert**: Transparently displays that *Neem Oil Extract* is claimed as curative by `DOC_003` but refuted by multi-site meta-analysis `DOC_004`.
-     - **Adversarial Telemetry Shield**: Shows that `SENSOR_CORRUPT_TEMP_99` (reading 250°C) and negative humidity were caught and rejected from the reasoning engine.
-3. **Interactive Knowledge Graph (`/graph`)**:
-   - Visual HTML5 canvas rendering the connected knowledge graph.
-   - Click on nodes (`Tomato`, `Early Blight`, `Humid Warm Monsoon`, `Copper Hydroxide`) to inspect detailed properties in real time.
-4. **Evidence & Provenance Catalog (`/provenance`)**:
-   - Full ledger of peer-reviewed publications, sensor networks, extension advisories, and farmer logs with confidence ratings.
-5. **Conflicts & Data Quality Shield (`/quality`)**:
-   - In-depth contradiction analysis comparing supporting vs contradictory empirical evidence.
-   - Live audit table of sensor telemetry sanity checks.
+> Dynamic Agricultural Knowledge Graph connecting crops, diseases, treatments, soil conditions, and environmental telemetry while tracking source provenance, surfacing conflicting scientific evidence, and rejecting corrupted sensor data.
 
 ---
 
-## 🚀 Quickstart Guide
+## 💻 Running the Terminal Interactive Application
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+ and npm
-- Optional: Docker (for local Neo4j & MongoDB containers)
+To launch the interactive AgriGraph CLI assistant:
 
-### 1. Backend Setup
 ```bash
-# From repository root
-python3 -m pip install fastapi uvicorn pydantic neo4j pymongo pandas sentence-transformers scikit-learn
-
-# Run FastAPI backend (defaults to port 8000)
-python3 -m uvicorn backend.main:app --reload --port 8000
+python3 -m backend.cli
 ```
-Backend API will be live at: `http://localhost:8000`
-Interactive Swagger Docs at: `http://localhost:8000/docs`
 
-### 2. Frontend Setup
-```bash
-# In another terminal window:
-cd frontend
-npm install
-npm run dev
-```
-Frontend UI will be live at: `http://localhost:5173`
+### CLI Interactive Commands:
+- Any natural-language agricultural question (e.g. `What soil conditions are suitable for tomato?`)
+- `examples` — List sample queries
+- `stats` — Display knowledge graph metrics and Neo4j status
+- `conflicts` — View detected conflicting claims (e.g. Neem Oil)
+- `validation` — View rejected sensor telemetry audit
+- `help` — Show available commands
+- `exit` — Quit the application
 
 ---
 
-## 🏗️ Architecture & Component Design
+## 🔍 Core Pipeline Architecture
 
 ```text
-                    DATA SOURCES
-                         |
-        +----------------+----------------+
-        |                |                |
-   Research Docs      Weather          Soil
-   Crop/Disease       Farmer          Sensor
-   Data               Data            Data
-        |                |                |
-        +----------------+----------------+
-                         |
-                  DATA INGESTION
-             (CSV, JSON, Text extract)
-                         |
-              CLEANING / NORMALIZATION
-                         |
-              ENTITY + RELATION EXTRACTION
-                         |
-                  KNOWLEDGE GRAPH
-            (Neo4j + In-Memory Fallback)
-                         |
-        +----------------+----------------+
-        |                |                |
-   Provenance      Conflict Detection   Validation
-        |                |                |
-        +----------------+----------------+
-                         |
-                  QUERY PROCESSING
-            (Semantic Entity Retrieval)
-                         |
-                    FASTAPI API
-                         |
-                   REACT FRONTEND
+User Query
+    ↓
+Query Understanding & Intent Detection (backend/retrieval/intent.py)
+    ↓
+Entity Identification & Semantic Retrieval (backend/retrieval/service.py)
+    ↓
+Intent-Filtered Knowledge Graph Traversal (backend/graph/service.py)
+    ↓
+Relevant Subgraph & Relational Triples
+    ↓
+Source Provenance Retrieval (backend/provenance/tracker.py)
+    ↓
+Conflict Detection Engine (backend/conflict/engine.py)
+    ↓
+Sensor Telemetry Validation & Guardrails (backend/validation/validator.py)
+    ↓
+Evidence Context Construction
+    ↓
+LLM Grounded Answer Generation (backend/services/llm_service.py)
+    ↓
+Formatted Terminal Output (backend/cli.py)
 ```
 
 ---
 
-## 🧪 Testing
+## 🧪 Automated Regression Tests
 
-Run the automated integration test suite:
+Run the full automated backend test suite:
+
 ```bash
-python3 -c "
-from tests.test_agrigraph import *
-test_health_endpoint()
-test_dashboard_stats()
-test_farmer_query_core_scenario()
-test_sensor_validation_logic()
-test_conflict_detection_logic()
-print('All tests passed!')
-"
+PYTHONPATH=. python3 tests/test_backend_pipeline.py
+```
+
+### Test Coverage:
+1. **Intent Classification**: Tests all 7 canonical intents (`CROP_DISEASE`, `SOIL_SUITABILITY`, `DISEASE_RISK`, `TREATMENT`, `EVIDENCE_PROVENANCE`, `CONFLICT`, `DATA_QUALITY`).
+2. **Soil Query Bug Regression**: Confirms `What soil conditions are suitable for tomato?` strictly traverses `(Crop)-[:SUITABLE_FOR]->(Soil)` and does **not** leak Early Blight or disease risk.
+3. **Crop Disease Traversal**: Confirms `(Crop)-[:SUSCEPTIBLE_TO]->(Disease)` paths.
+4. **Treatment Retrieval**: Grounded in prophylactic Copper Hydroxide (`DOC_001`) and Bacillus subtilis (`DOC_002`).
+5. **Conflict Engine**: Surfaces the Neem Oil debate (`DOC_003` extension advisory vs `DOC_004` meta-analysis).
+6. **Data Quality Shield**: Confirms corrupted telemetry (250°C temperature, negative humidity, pH 20) is caught and barred.
+
+---
+
+## 📋 Sample Test Queries
+
+Try entering these directly into the terminal CLI:
+
+1. `What diseases commonly affect tomato?`
+   - *Traverses:* `Tomato -[:SUSCEPTIBLE_TO]-> Early Blight, Late Blight, Septoria`
+2. `What soil conditions are suitable for tomato?`
+   - *Traverses:* `Tomato -[:SUITABLE_FOR]-> Loamy Sand, Alluvial Silt` *(DOC_005)*
+3. `Why is my tomato crop at high disease risk?`
+   - *Traverses:* `Tomato -> Early Blight -> 88.5% Humidity -> DOC_001, DOC_007`
+4. `What treatments are associated with Early Blight?`
+   - *Traverses:* `Early Blight -[:TREATED_BY]-> Copper Hydroxide, Chlorothalonil, Bacillus subtilis`
+5. `Are there conflicting recommendations for Neem Oil Extract?`
+   - *Surfaces:* `DOC_003` (claims effective) vs `DOC_004` (ineffective under >85% humidity)
+6. `Are there any invalid sensor readings?`
+   - *Rejects:* `SENSOR_CORRUPT_TEMP_99` (250°C), negative humidity, and pH 20
+
+---
+
+## 🚀 Running the Full Web Application (Backend + Frontend)
+
+AgriGraph includes a unified runner that launches both the **FastAPI Backend (port 8000)** and the **React + Vite Frontend (port 5173)** simultaneously:
+
+```bash
+python3 run.py
+```
+
+Access points:
+- **Frontend Web UI**: [http://localhost:5173](http://localhost:5173)
+- **Backend API**: [http://localhost:8000](http://localhost:8000)
+- **Interactive Swagger Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 🔐 Demo Credentials
+
+The system comes pre-seeded with authenticated accounts:
+
+| Role | Email | Password | Admin Passcode |
+|---|---|---|---|
+| **Farmer** | `farmer@agrigraph.org` | `farmerpassword123` | *N/A* |
+| **Admin** | `admin@agrigraph.org` | `adminpassword123` | `AGRIGRAPH_ADMIN_2026` |
+
+---
+
+## 🌾 Farmer Web Experience
+- **Multilingual Support**: Real-time translation into **Telugu**, **Hindi**, and **English** with strict preservation of scientific terms and evidence citations.
+- **Voice Input**: Integrated browser Web Speech recognition for voice querying in Telugu, Hindi, or English.
+- **Evidence & Provenance**: Every response cites peer-reviewed source IDs (e.g., `DOC_001`, `DOC_002`) and displays verifiable confidence scores.
+- **Conflict & Quality Guardrails**: Clear, color-coded alerts when agricultural claims are in scientific dispute or when field sensors transmit anomalous values.
+
+---
+
+## 🔬 Admin Dynamic Knowledge Graph Construction
+Admins can upload new agricultural resources (**PDF, CSV, JSON**):
+1. **Extraction**: Structured text parsing with page boundary and table preservation.
+2. **Chunking & Vector Indexing**: Sentence Transformer vector embeddings with cosine similarity.
+3. **Structured Extraction & Normalization**: Entity canonicalization and ontology schema validation.
+4. **Provenance & Conflict Auditing**: Checks incoming claims against existing literature.
+5. **Graph Insertion**: Dynamic updates to Neo4j / in-memory graph.
+6. **Query Readiness**: Ingested knowledge immediately enriches subsequent farmer queries.
+
+---
+
+## 🧪 Comprehensive Automated Verification
+
+AgriGraph includes two end-to-end automated test suites:
+
+```bash
+# 1. Test complete query pipeline, intent routing, and regression isolation
+PYTHONPATH=. python3 tests/test_backend_pipeline.py
+
+# 2. Test multi-stage dynamic ingestion pipeline (PDF, CSV, JSON, conflicts, graph update)
+PYTHONPATH=. python3 -m unittest tests/test_dynamic_ingestion.py
 ```
 
 ---
 
-## 📊 Data Disclosure
-- **Real / Public Source Data**: Standard agricultural taxonomy, environmental pathogen thresholds for *Alternaria solani*, and research findings adapted from plant pathology publications.
-- **Demo / Synthetic Data**: Sensor telemetry readings and farmer field observations (`OBS_001`, `OBS_002`), intentionally corrupted sensor readings (`SN_READ_005` to `007`) for adversarial testing, and the unverified claim (`CLM_006`). All demo records are explicitly labeled.
+## ⚙️ Environment Configuration
+
+Configuration variables can be customized in `.env` (refer to `.env.example`):
+- `NEO4J_URI` (default: `bolt://localhost:7687`)
+- `NEO4J_USER` (default: `neo4j`)
+- `NEO4J_PASSWORD` (default: `password`)
+- `MONGODB_URI` (default: `mongodb://localhost:27017`)
+- `USE_MOCK_FALLBACK` (default: `true` — enables seamless hybrid resilience)
+

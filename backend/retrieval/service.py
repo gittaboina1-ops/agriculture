@@ -1,6 +1,7 @@
 import time
 import json
 import os
+import sys
 from typing import Dict, Any, List, Optional
 import logging
 from backend.graph.service import graph_service
@@ -11,23 +12,52 @@ from backend.services.mongo_service import mongo_service
 from backend.retrieval.intent import intent_detector
 from backend.services.llm_service import llm_service
 
+# Suppress noisy HuggingFace/transformers output during CLI usage
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logger = logging.getLogger("retrieval_service")
 
 class SemanticRetrievalService:
     def __init__(self):
         self.encoder = None
+        self.model_name = "all-MiniLM-L6-v2"
+        self.model_status = "unloaded"
         self._init_encoder()
         self.entity_catalog = []
         self._build_entity_catalog()
 
     def _init_encoder(self):
+        # Redirect stderr temporarily to hide Huggingface tqdm download bars in terminal
+        old_stderr = sys.stderr
         try:
-            from sentence_transformers import SentenceTransformer
-            self.encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-            logger.info("SentenceTransformer model loaded successfully.")
-        except Exception as e:
-            logger.warning(f"Could not load SentenceTransformer ({e}). Using n-gram keyword token matcher fallback.")
-            self.encoder = None
+            with open(os.devnull, "w") as devnull:
+                sys.stderr = devnull
+                from sentence_transformers import SentenceTransformer
+                self.encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", local_files_only=True)
+            self.model_status = "loaded"
+            intent_detector.attach_encoder(self.encoder)
+            from backend.ingestion.semantic_index import semantic_index
+            from backend.ingestion.normalizer import entity_normalizer
+            semantic_index.attach_encoder(self.encoder)
+            entity_normalizer.attach_encoder(self.encoder)
+        except Exception:
+            try:
+                with open(os.devnull, "w") as devnull:
+                    sys.stderr = devnull
+                    from sentence_transformers import SentenceTransformer
+                    self.encoder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+                self.model_status = "loaded"
+                intent_detector.attach_encoder(self.encoder)
+                from backend.ingestion.semantic_index import semantic_index
+                from backend.ingestion.normalizer import entity_normalizer
+                semantic_index.attach_encoder(self.encoder)
+                entity_normalizer.attach_encoder(self.encoder)
+            except Exception:
+                self.encoder = None
+                self.model_status = "fallback_rules"
+        finally:
+            sys.stderr = old_stderr
 
     def _build_entity_catalog(self):
         self.entity_catalog.clear()
@@ -43,52 +73,71 @@ class SemanticRetrievalService:
         query_lower = query.lower()
         matched = []
 
-        # 1. Exact / substring match
+        # 1. Exact string / case-insensitive entity match
         for ent in self.entity_catalog:
             ent_name_lower = ent["name"].lower()
             if ent_name_lower in query_lower:
                 if not any(m["id"] == ent["id"] for m in matched):
                     matched.append({**ent, "score": 1.0, "match_type": "exact"})
 
-        # 2. Agricultural entity aliases
-        if "potato" in query_lower and not any(m["name"].lower() == "potato" for m in matched):
-            ent = next((e for e in self.entity_catalog if e["id"] == "CROP_002"), None)
-            if ent:
-                matched.append({**ent, "score": 1.0, "match_type": "crop_match"})
-
-        if "tomato" in query_lower and not any(m["name"].lower() == "tomato" for m in matched):
+        # 2. Agricultural entity aliases & synonyms (English, Telugu, Hindi, transliterations)
+        # Tomato aliases
+        if any(term in query_lower for term in ["tomato", "టమోటా", "టమాటా", "టమాట", "टमाटर"]) and not any(m["name"].lower() == "tomato" for m in matched):
             ent = next((e for e in self.entity_catalog if e["id"] == "CROP_001"), None)
             if ent:
                 matched.append({**ent, "score": 1.0, "match_type": "crop_match"})
 
-        if "soil" in query_lower:
+        # Potato aliases
+        if any(term in query_lower for term in ["potato", "బంగాళాదుంప", "ఆలుగడ్డ", "आलू"]) and not any(m["name"].lower() == "potato" for m in matched):
+            ent = next((e for e in self.entity_catalog if e["id"] == "CROP_002"), None)
+            if ent:
+                matched.append({**ent, "score": 1.0, "match_type": "crop_match"})
+
+        # Pepper aliases
+        if any(term in query_lower for term in ["pepper", "bell pepper", "క్యాప్సికం", "మిరప", "शिमला मिर्च", "मिर्च"]) and not any(m["name"].lower() == "bell pepper" for m in matched):
+            ent = next((e for e in self.entity_catalog if e["id"] == "CROP_003"), None)
+            if ent:
+                matched.append({**ent, "score": 1.0, "match_type": "crop_match"})
+
+        # Wheat aliases
+        if any(term in query_lower for term in ["wheat", "గోధుమ", "गेहूं"]) and not any(m["name"].lower() == "wheat" for m in matched):
+            ent = next((e for e in self.entity_catalog if e["id"] == "CROP_004"), None)
+            if ent:
+                matched.append({**ent, "score": 1.0, "match_type": "crop_match"})
+
+        # Soil aliases
+        if any(term in query_lower for term in ["soil", "మట్టి", "నేల", "భూమి", "मिट्टी", "जमीन"]):
             for sid in ["SOIL_001", "SOIL_004"]:
                 ent = next((e for e in self.entity_catalog if e["id"] == sid), None)
                 if ent and not any(m["id"] == sid for m in matched):
                     matched.append({**ent, "score": 0.90, "match_type": "soil_entity"})
 
-        if "late blight" in query_lower:
+        # Late Blight aliases
+        if any(term in query_lower for term in ["late blight", "లేట్ బ్లైట్", "పచేతి", "पछेती झुलसा"]):
             ent = next((e for e in self.entity_catalog if e["id"] == "DIS_002"), None)
             if ent and not any(m["id"] == "DIS_002" for m in matched):
                 matched.append({**ent, "score": 1.0, "match_type": "disease_match"})
 
-        if ("early blight" in query_lower or ("blight" in query_lower and "late" not in query_lower)):
+        # Early Blight aliases
+        if any(term in query_lower for term in ["early blight", "ముందస్తు తెగులు", "అగేతి", "अगेती झुलसा"]) or ("blight" in query_lower and "late" not in query_lower):
             ent = next((e for e in self.entity_catalog if e["id"] == "DIS_001"), None)
             if ent and not any(m["id"] == "DIS_001" for m in matched):
                 matched.append({**ent, "score": 0.95, "match_type": "disease_match"})
 
-        if ("treatment" in query_lower or "spray" in query_lower or "control" in query_lower or "copper" in query_lower):
+        # Treatment aliases
+        if any(term in query_lower for term in ["treatment", "spray", "control", "copper", "మందు", "స్ప్రే", "నివారణ", "చికిత్స", "उपचार", "दवा", "स्प्रे", "रोकथाम"]):
             for tid in ["TRT_001", "TRT_002", "TRT_003"]:
                 ent = next((e for e in self.entity_catalog if e["id"] == tid), None)
                 if ent and not any(m["id"] == tid for m in matched):
                     matched.append({**ent, "score": 0.85, "match_type": "treatment_match"})
 
-        if ("neem" in query_lower or "botanical" in query_lower):
+        # Neem aliases
+        if any(term in query_lower for term in ["neem", "botanical", "వేప", "వేపనూనె", "నీమ్", "नीम"]):
             ent = next((e for e in self.entity_catalog if e["id"] == "TRT_005"), None)
             if ent and not any(m["id"] == "TRT_005" for m in matched):
                 matched.append({**ent, "score": 0.98, "match_type": "conflict_entity"})
 
-        # Default anchor if completely generic
+        # Default fallback anchor
         if not matched:
             ent = next((e for e in self.entity_catalog if e["id"] == "CROP_001"), None)
             if ent:
@@ -100,6 +149,9 @@ class SemanticRetrievalService:
         start_time = time.time()
         q_lower = query_text.lower().strip()
 
+        # Rebuild entity catalog so newly ingested nodes are immediately searchable
+        self._build_entity_catalog()
+
         # Step 1: Detect Query Intent
         intent = intent_detector.detect_intent(query_text)
 
@@ -110,14 +162,11 @@ class SemanticRetrievalService:
         crop_node_id = next((e["id"] for e in matched_entities if e["label"] == "Crop"), "CROP_001")
 
         # Step 3: Intent-Filtered Knowledge Graph Traversal
-        # CRITICAL RULE: Filter relationships strictly according to intent!
-        # E.g. SOIL_SUITABILITY must prioritize (Crop)-[:SUITABLE_FOR]->(Soil) and exclude disease paths!
         subgraph_nodes = []
         subgraph_edges = []
         relevant_soil_records = []
 
         if intent == "SOIL_SUITABILITY":
-            # Target SUITABLE_FOR edges from crop
             for edge in graph_service.edges:
                 if edge["source"] == crop_node_id and edge["relationship"] == "SUITABLE_FOR":
                     subgraph_edges.append(edge)
@@ -125,7 +174,6 @@ class SemanticRetrievalService:
                     if target_soil and target_soil not in relevant_soil_records:
                         relevant_soil_records.append(target_soil)
 
-            # Include the crop node and soil nodes
             crop_node = graph_service.nodes.get(crop_node_id)
             if crop_node:
                 subgraph_nodes.append(crop_node)
@@ -134,7 +182,6 @@ class SemanticRetrievalService:
                     subgraph_nodes.append(s)
 
         elif intent == "CROP_DISEASE":
-            # Target SUSCEPTIBLE_TO edges
             for edge in graph_service.edges:
                 if edge["source"] == crop_node_id and edge["relationship"] == "SUSCEPTIBLE_TO":
                     subgraph_edges.append(edge)
@@ -146,7 +193,6 @@ class SemanticRetrievalService:
                 subgraph_nodes.append(crop_node)
 
         elif intent == "TREATMENT":
-            # Target TREATED_BY edges
             dis_id = "DIS_001" if "early" in q_lower or "tomato" in q_lower else "DIS_002"
             for edge in graph_service.edges:
                 if edge["source"] == dis_id and edge["relationship"] == "TREATED_BY":
@@ -159,7 +205,6 @@ class SemanticRetrievalService:
                 subgraph_nodes.append(dis_node)
 
         elif intent == "CONFLICT":
-            # Neem Oil dispute
             trt_id = "TRT_005"
             for edge in graph_service.edges:
                 if edge["target"] == trt_id or edge["source"] == trt_id or edge["source"] == "CLM_004":
@@ -167,26 +212,70 @@ class SemanticRetrievalService:
             subgraph_nodes = [n for n in graph_service.nodes.values() if n["id"] in ["TRT_005", "CLM_004", "DOC_003", "DOC_004"]]
 
         elif intent == "DATA_QUALITY":
-            # Sensor telemetry focus
             for edge in graph_service.edges:
                 if "SENSOR" in edge["source"]:
                     subgraph_edges.append(edge)
             subgraph_nodes = [n for n in graph_service.nodes.values() if n["label"] in ["Sensor", "WeatherCondition"]]
 
-        else: # DISEASE_RISK, WEATHER_RISK, GENERAL
-            # Full disease risk traversal: Crop -> Disease -> Weather -> Observation
+        elif intent == "DISEASE_RISK":
+            # Focused DISEASE_RISK traversal: strictly isolates the requested crop's active risk factors.
+            # Explicitly excludes unrelated crops (e.g. Potato), general treatments, and unrelated soil suitability.
+            target_dis_id = "DIS_001" if crop_node_id == "CROP_001" else ("DIS_002" if crop_node_id == "CROP_002" else "DIS_001")
+            
+            # (Crop)-[:SUSCEPTIBLE_TO]->(Disease)
+            for edge in graph_service.edges:
+                if edge["source"] == crop_node_id and edge["target"] == target_dis_id and edge["relationship"] == "SUSCEPTIBLE_TO":
+                    subgraph_edges.append(edge)
+
+            # (Disease)-[:ASSOCIATED_WITH]->(WeatherCondition)
+            for edge in graph_service.edges:
+                if edge["source"] == target_dis_id and edge["relationship"] == "ASSOCIATED_WITH":
+                    subgraph_edges.append(edge)
+
+            # (Observation)-[:OBSERVED_ON]->(Crop) & (Observation)-[:INDICATES_DISEASE]->(Disease)
+            for edge in graph_service.edges:
+                if edge["relationship"] in ["OBSERVED_ON", "INDICATES_DISEASE"]:
+                    if edge["target"] in [crop_node_id, target_dis_id]:
+                        subgraph_edges.append(edge)
+
+            # (Sensor)-[:REPORTS_CONDITION]->(WeatherCondition)
+            for edge in graph_service.edges:
+                if edge["relationship"] == "REPORTS_CONDITION" and edge["target"] == "WTH_001":
+                    subgraph_edges.append(edge)
+
+            # Assemble strictly relevant node objects
+            node_ids_in_edges = set()
+            for edge in subgraph_edges:
+                node_ids_in_edges.add(edge["source"])
+                node_ids_in_edges.add(edge["target"])
+
+            subgraph_nodes = [graph_service.nodes[nid] for nid in node_ids_in_edges if nid in graph_service.nodes]
+
+        else: # WEATHER_RISK, GENERAL
             raw_sub = graph_service.get_subgraph_for_entities(matched_ids)
-            subgraph_nodes = raw_sub["nodes"]
-            subgraph_edges = raw_sub["edges"]
+            # Ensure unrelated crops are not leaked
+            subgraph_nodes = [n for n in raw_sub["nodes"] if n["id"] != "CROP_002" or crop_node_id == "CROP_002"]
+            subgraph_edges = [e for e in raw_sub["edges"] if e["source"] != "CROP_002" and e["target"] != "CROP_002" or crop_node_id == "CROP_002"]
 
         subgraph = {
             "nodes": subgraph_nodes,
             "edges": subgraph_edges
         }
 
-        # Step 4: Extract Relational Evidence Triples
+        # Step 4: Semantic Chunk Search (Hybrid Graph + Vector Evidence)
+        from backend.ingestion.semantic_index import semantic_index
+        semantic_chunks = semantic_index.search_similar(query_text, top_k=3)
         relevant_evidence = []
         relevant_sources = []
+
+        # Connect semantic chunk sources
+        for schunk in semantic_chunks:
+            did = schunk.get("document_id")
+            if did:
+                src = provenance_tracker.get_source(did)
+                if src and not any(s["source_id"] == src["source_id"] for s in relevant_sources):
+                    relevant_sources.append(src)
+
         for edge in subgraph_edges:
             prov_id = edge.get("properties", {}).get("provenance")
             if prov_id:
@@ -236,7 +325,6 @@ class SemanticRetrievalService:
             with open(sensors_file, "r") as f:
                 raw_sensors = json.load(f)
                 val_res = validation_service.process_readings(raw_sensors)
-                # Only show warnings if intent relates to data quality or disease risk evaluation
                 if intent in ["DATA_QUALITY", "DISEASE_RISK", "GENERAL"]:
                     for inv in val_res["invalid_records"]:
                         data_quality_warnings.append({
@@ -258,7 +346,8 @@ class SemanticRetrievalService:
             "sources": relevant_sources,
             "conflicts": active_conflicts,
             "data_quality_warnings": data_quality_warnings,
-            "soil_records": relevant_soil_records
+            "soil_records": relevant_soil_records,
+            "semantic_chunks": semantic_chunks
         }
 
         llm_response = llm_service.generate_grounded_answer(query_text, intent, context_payload)
@@ -281,6 +370,7 @@ class SemanticRetrievalService:
             "query": query_text,
             "intent": intent,
             "matched_crop": matched_crop,
+            "entities": matched_entities,
             "agricultural_insight": llm_response["agricultural_insight"],
             "relevant_factors": llm_response["relevant_factors"],
             "evidence": relevant_evidence,
@@ -289,10 +379,12 @@ class SemanticRetrievalService:
             "data_quality_warnings": data_quality_warnings,
             "subgraph": subgraph,
             "evaluation_metrics": evaluation_metrics,
-            "generation_mode": llm_response["mode"]
+            "generation_mode": llm_response.get("mode", "grounded_rule_engine"),
+            "provider": llm_response.get("provider", "fallback"),
+            "model": llm_response.get("model", None),
+            "fallback_reason": llm_response.get("fallback_reason", None)
         }
 
-        # Log query to Mongo
         mongo_service.log_query({
             "query": query_text,
             "intent": intent,
