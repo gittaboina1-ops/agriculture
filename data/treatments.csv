@@ -1,0 +1,8 @@
+treatment_id,name,treatment_type,active_agent,application_method,description
+TRT_001,Copper Hydroxide Spray,Chemical/Mineral,Copper Hydroxide,Foliar Spray,Protective broad-spectrum bactericide and contact fungicide applied preventative to foliage.
+TRT_002,Chlorothalonil Fungicide,Synthetic Fungicide,Chlorothalonil,Foliar Spray,Broad-spectrum protectant fungicide commonly applied prior to wet fungal infection windows.
+TRT_003,Bacillus subtilis Bio-Fungicide,Biological,Bacillus subtilis QST 713,Foliar & Drench,Microbial antagonist preventing spore attachment and triggering induced systemic resistance.
+TRT_004,Potassium Bicarbonate,Organic Mineral,KHCO3,Foliar Spray,Contact curative spray disrupting fungal osmotic balance and cell walls.
+TRT_005,Neem Oil Extract,Organic Botanical,Azadirachtin & Hydrophobic Extract,Foliar Spray,Organic plant extract acting as mild antifungal and insect repellant.
+TRT_006,Drip Fertigation Reduction,Cultural,Irrigation Management,Soil Management,Adjusting moisture regime to eliminate excessive rootzone and canopy humidity.
+TRT_007,Streptomycin Sulfate,Antibiotic,Streptomycin,Foliar Spray,Agricultural bactericide for controlling severe plant bacterial infections.

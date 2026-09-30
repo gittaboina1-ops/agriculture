@@ -1,0 +1,89 @@
+[
+  {
+    "reading_id": "SN_READ_001",
+    "sensor_id": "SENSOR_WEATHER_TH_01",
+    "sensor_type": "temperature_humidity",
+    "timestamp": "2026-09-30T10:00:00Z",
+    "field_id": "FIELD_NORTH_TOMATO",
+    "metric": "humidity",
+    "value": 88.5,
+    "unit": "%",
+    "status": "VALID",
+    "notes": "Optimal ambient station reading"
+  },
+  {
+    "reading_id": "SN_READ_002",
+    "sensor_id": "SENSOR_WEATHER_TH_01",
+    "sensor_type": "temperature_humidity",
+    "timestamp": "2026-09-30T10:00:00Z",
+    "field_id": "FIELD_NORTH_TOMATO",
+    "metric": "temperature",
+    "value": 26.2,
+    "unit": "°C",
+    "status": "VALID",
+    "notes": "Optimal ambient station reading"
+  },
+  {
+    "reading_id": "SN_READ_003",
+    "sensor_id": "SENSOR_SOIL_PH_02",
+    "sensor_type": "soil_probe",
+    "timestamp": "2026-09-30T10:05:00Z",
+    "field_id": "FIELD_NORTH_TOMATO",
+    "metric": "ph",
+    "value": 6.4,
+    "unit": "pH",
+    "status": "VALID",
+    "notes": "Soil probe normal reading"
+  },
+  {
+    "reading_id": "SN_READ_004",
+    "sensor_id": "SENSOR_SOIL_MOIST_03",
+    "sensor_type": "soil_moisture",
+    "timestamp": "2026-09-30T10:10:00Z",
+    "field_id": "FIELD_NORTH_TOMATO",
+    "metric": "moisture",
+    "value": 78.0,
+    "unit": "%",
+    "status": "VALID",
+    "notes": "Sub-surface root moisture"
+  },
+  {
+    "reading_id": "SN_READ_005",
+    "sensor_id": "SENSOR_CORRUPT_TEMP_99",
+    "sensor_type": "ambient_temp",
+    "timestamp": "2026-09-30T10:15:00Z",
+    "field_id": "FIELD_NORTH_TOMATO",
+    "metric": "temperature",
+    "value": 250.0,
+    "unit": "°C",
+    "status": "INVALID",
+    "anomaly_reason": "Value outside configured agricultural/environmental range (-10°C to 60°C). Possible telemetry hardware short-circuit.",
+    "action_taken": "Excluded from graph reasoning and risk computation"
+  },
+  {
+    "reading_id": "SN_READ_006",
+    "sensor_id": "SENSOR_CORRUPT_HUM_98",
+    "sensor_type": "leaf_wetness_hum",
+    "timestamp": "2026-09-30T10:18:00Z",
+    "field_id": "FIELD_NORTH_TOMATO",
+    "metric": "humidity",
+    "value": -20.0,
+    "unit": "%",
+    "status": "INVALID",
+    "anomaly_reason": "Value outside valid physical range (0% to 100%). Negative relative humidity is physically impossible.",
+    "action_taken": "Excluded from graph reasoning"
+  },
+  {
+    "reading_id": "SN_READ_007",
+    "sensor_id": "SENSOR_CORRUPT_PH_97",
+    "sensor_type": "soil_probe",
+    "timestamp": "2026-09-30T10:20:00Z",
+    "field_id": "FIELD_NORTH_TOMATO",
+    "metric": "ph",
+    "value": 20.0,
+    "unit": "pH",
+    "status": "INVALID",
+    "anomaly_reason": "Value outside standard chemical scale (0 to 14 pH).",
+    "action_taken": "Excluded from graph reasoning"
+  }
+]

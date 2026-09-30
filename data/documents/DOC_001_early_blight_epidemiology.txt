@@ -1,0 +1,15 @@
+# AGRI-TECH RESEARCH DOCUMENT (DOC_001)
+# Journal of Plant Pathology & Agro-ecology - Issue 42, 2022
+# Title: Epidemiology and Integrated Management of Early Blight (Alternaria solani) in Solanaceous Crops
+
+## Abstract
+Early Blight, incited by the necrotrophic fungus Alternaria solani, remains one of the most economically devastating foliar diseases affecting tomato (Solanum lycopersicum) and potato (Solanum tuberosum) cultivation globally. This study examines micro-climate drivers, disease epidemiology, and efficacy of prophylactic fungicide applications across multi-season trials.
+
+## Environmental Triggers & Pathogen Etiology
+Alternaria solani conidia require free water or relative humidity in excess of 80% to germinate. When ambient temperatures remain between 24°C and 30°C in the presence of continuous leaf wetness for 8 or more hours, infection severity escalates exponentially. Older, senescing leaves in the lower canopy are first colonized, exhibiting characteristic concentric dark target-like lesions surrounded by chlorotic halos.
+
+## Prophylactic and Curative Management
+Multi-location field trials indicate that preventative sprays of Copper Hydroxide (at 2.5 g/L) achieve 88% prophylactic protection when initiated before full canopy closure. In contrast, post-symptom curative treatments show variable results.
+
+## Provenance Note
+Primary Author: Dr. Marcus Vance, Agricultural Research Directorate. Verified and peer-reviewed.

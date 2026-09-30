@@ -1,0 +1,8 @@
+claim_id,entity_id,entity_name,claim_text,claim_type,status,primary_source_id,conflicting_source_id,supporting_source_ids,contradicting_source_ids,confidence,is_synthetic
+CLM_001,DIS_001,Early Blight,"Tomato is highly susceptible to Early Blight caused by Alternaria solani under high humidity conditions.",SUSCEPTIBILITY,VERIFIED,DOC_001,,DOC_001;DOC_007,,0.95,false
+CLM_002,TRT_001,Copper Hydroxide Spray,"Copper Hydroxide Spray is an effective preventative bactericide and fungicide against Early Blight.",TREATMENT_EFFICACY,VERIFIED,DOC_001,,DOC_001,,0.88,false
+CLM_003,TRT_003,Bacillus subtilis Bio-Fungicide,"Bacillus subtilis provides effective biological phyllosphere suppression of Alternaria solani.",TREATMENT_EFFICACY,VERIFIED,DOC_002,,DOC_002,,0.78,false
+CLM_004,TRT_005,Neem Oil Extract,"Neem Oil Extract is an effective standalone curative treatment for Early Blight on tomatoes under humid conditions.",TREATMENT_EFFICACY,CONFLICTING,DOC_003,DOC_004,DOC_003,DOC_004,0.50,false
+CLM_005,DIS_001,Early Blight,"Extended relative humidity (>80%) and temperatures 24-30C drastically accelerate Early Blight sporulation and foliar infection.",ENVIRONMENTAL_TRIGGER,VERIFIED,DOC_001,,DOC_001;DOC_006,,0.96,false
+CLM_006,TRT_007,Streptomycin Sulfate,"Streptomycin Sulfate cure rate for Tomato Yellow Leaf Curl Virus without vector containment.",TREATMENT_EFFICACY,UNVERIFIED,"","","","",0.10,true
+CLM_007,SOIL_001,Loamy Sand,"Tomato thrives best in well-drained loamy sand or alluvial silt with optimal soil pH between 6.0 and 7.0.",SOIL_SUITABILITY,VERIFIED,DOC_005,,DOC_005,,0.91,false

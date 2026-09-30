@@ -1,0 +1,5 @@
+soil_id,soil_type,ph_min,ph_max,drainage,organic_matter,suitable_crops,description
+SOIL_001,Loamy Sand,6.0,7.0,Well-drained,Moderate,"Tomato,Potato,Bell Pepper",Well aerated soil suitable for root vegetables and solanaceous crops preventing waterlogging.
+SOIL_002,Clay Loam,6.2,7.2,Moderate,High,"Wheat,Maize,Tomato",Nutrient rich moisture retentive soil ideal for grain and row crops.
+SOIL_003,Heavy Black Clay,7.0,8.5,Poor,Very High,"Cotton,Wheat",Dense swelling clay prone to surface water pooling and fungal rot if over-irrigated.
+SOIL_004,Alluvial Silt,5.8,6.8,Good,High,"Rice,Wheat,Tomato",River basin soil fertile and balanced for intensive horticulture.

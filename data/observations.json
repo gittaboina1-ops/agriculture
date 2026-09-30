@@ -1,0 +1,30 @@
+[
+  {
+    "observation_id": "OBS_001",
+    "farmer_id": "FARMER_RAMESH_01",
+    "farmer_name": "Ramesh Patel",
+    "crop_id": "CROP_001",
+    "crop_name": "Tomato",
+    "field_name": "Plot 4A - North Valley",
+    "observed_date": "2026-09-28",
+    "symptoms_reported": "Target-shaped brown spots with concentric circles on lower mature leaves and slight leaf chlorosis",
+    "suspected_disease": "Early Blight",
+    "severity": "Moderate (25-30% canopy involvement)",
+    "source_id": "DOC_007",
+    "verified_by_agronomist": true
+  },
+  {
+    "observation_id": "OBS_002",
+    "farmer_id": "FARMER_SITA_02",
+    "farmer_name": "Sita Devi",
+    "crop_id": "CROP_002",
+    "crop_name": "Potato",
+    "field_name": "Plot 1B - Hill Terraces",
+    "observed_date": "2026-09-25",
+    "symptoms_reported": "Water-soaked dark lesions appearing overnight on leaf tips after persistent cold mist",
+    "suspected_disease": "Late Blight",
+    "severity": "High (rapid spread)",
+    "source_id": "DOC_007",
+    "verified_by_agronomist": true
+  }
+]

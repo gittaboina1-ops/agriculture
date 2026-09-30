@@ -1,0 +1,5 @@
+condition_id,name,temperature_avg,humidity_avg,rainfall_mm,uv_index,risk_factor,favorable_diseases,description
+WTH_001,Humid Warm Monsoon,26.5,88.5,12.4,5,High,"Early Blight,Septoria Leaf Spot",Persistent canopy humidity (>85%) and temperature 24-28C creating optimum spore germination.
+WTH_002,Cool Moist Overcast,17.2,92.0,18.0,3,Very High,"Late Blight",Prolonged leaf wetness and cool temperatures triggering devastating oomycete infection.
+WTH_003,Hot Dry Summer,34.0,42.0,0.0,9,Low,"Tomato Yellow Leaf Curl,Powdery Mildew",Arid conditions reducing fungal foliar sporulation but escalating whitefly and pest vectors.
+WTH_004,Temperate Moderate,22.0,65.0,2.0,6,Low,None,Favorable conditions for healthy vegetative growth and flowering with minimal pathogen pressure.

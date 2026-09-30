@@ -1,0 +1,14 @@
+# AGRI-TECH RESEARCH DOCUMENT (DOC_004)
+# International Phytopathology Consortium - Meta-Analysis Series, 2024
+# Title: Comprehensive Systematic Review on Botanical Fungicides in Open Field Agriculture
+
+## Abstract & Executive Finding
+Botanical remedies such as cold-pressed Neem Oil Extract have received widespread advocacy in low-input and organic production systems. This meta-analysis synthesized 34 empirical field trials evaluating neem oil efficacy against aggressive fungal pathogens in solanaceous vegetables.
+
+## The Conflict on Neem Oil Curative Efficacy
+While early extension advisories (e.g. DOC_003) advocated neem oil (2% emulsion) as both an effective preventative and curative spray against Early Blight (Alternaria solani), extensive multi-site trial data contradict this recommendation.
+
+Under high humidity conditions (>85% RH) and active lesion formation, Neem Oil Extract failed to halt radial mycelial expansion or sporulation in 92% of observed field cohorts. In high-pressure disease environments, reliance on neem oil as a curative intervention led to greater than 60% premature foliar defoliation.
+
+## Recommendation
+Neem oil may only provide mild repellent properties against insect vectors; it must NOT be recommended as a reliable curative fungicide for established Early Blight.

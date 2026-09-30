@@ -1,0 +1,7 @@
+disease_id,name,pathogen_type,scientific_pathogen,symptoms,favorable_temp_min,favorable_temp_max,favorable_humidity_min,favorable_humidity_max,description
+DIS_001,Early Blight,Fungal,Alternaria solani,"Concentric dark rings on older leaves, yellowing halos, stem lesions, fruit rot",24.0,30.0,80.0,98.0,High humidity and warm temperatures strongly trigger Alternaria spore germination on Solanaceae leaves.
+DIS_002,Late Blight,Oomycete,Phytophthora infestans,"Water-soaked dark lesions, white fungal growth under humid leaf undersides, rapid leaf collapse",15.0,22.0,85.0,100.0,Destructive disease favored by cool moist persistent leaf wetness.
+DIS_003,Bacterial Wilt,Bacterial,Ralstonia solanacearum,"Rapid daytime wilting without chlorosis, vascular browning, bacterial stream from stem cut",28.0,35.0,75.0,95.0,Soil-borne bacterial disease thriving in warm tropical wet soils.
+DIS_004,Powdery Mildew,Fungal,Leveillula taurica,"White powdery fungal patches on upper leaf surfaces, leaf cupping and senescence",20.0,28.0,40.0,70.0,Fungal disease thriving in warm dry weather with moderate humidity.
+DIS_005,Tomato Yellow Leaf Curl,Viral,TYLCV,"Severe leaf curling, stunted bushy growth, interveinal chlorosis transmitted by whiteflies",25.0,35.0,40.0,70.0,Insect-vectored geminivirus causing devastating yield losses in warm conditions.
+DIS_006,Septoria Leaf Spot,Fungal,Septoria lycopersici,"Small circular gray-centered spots with dark borders and pycnidia specks",20.0,26.0,80.0,95.0,Rain splash and extended leaf wetness stimulate severe foliar defoliation.
