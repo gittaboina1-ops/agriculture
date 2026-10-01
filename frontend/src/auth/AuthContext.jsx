@@ -5,50 +5,62 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('agrigraph_user');
-
-    if (!saved || saved === 'undefined' || saved === 'null') {
-      return null;
-    }
-
     try {
+      const saved = localStorage.getItem('agrigraph_user');
+
+      if (!saved || saved === 'null' || saved === 'undefined') {
+        return null;
+      }
+
       return JSON.parse(saved);
     } catch (error) {
-      localStorage.removeItem('agrigraph_user');
+      console.error('[AuthContext] Failed to parse agrigraph_user from localStorage:', error);
+      try {
+        localStorage.removeItem('agrigraph_user');
+      } catch (removeError) {
+        console.error('[AuthContext] Failed to clear invalid agrigraph_user:', removeError);
+      }
       return null;
     }
   });
 
   const [token, setToken] = useState(() => {
-    const savedToken = localStorage.getItem('agrigraph_token');
+    try {
+      const savedToken = localStorage.getItem('agrigraph_token');
 
-    if (!savedToken || savedToken === 'undefined' || savedToken === 'null') {
+      if (!savedToken || savedToken === 'null' || savedToken === 'undefined') {
+        return null;
+      }
+
+      return savedToken;
+    } catch (error) {
+      console.error('[AuthContext] Failed to read agrigraph_token from localStorage:', error);
       return null;
     }
-
-    return savedToken;
   });
 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (token) {
-      authAPI.getMe()
+      authAPI
+        .getMe()
         .then((res) => {
-          const loggedUser = res.data;
-
-          setUser(loggedUser);
-          localStorage.setItem(
-            'agrigraph_user',
-            JSON.stringify(loggedUser)
-          );
+          if (res && res.data) {
+            const loggedUser = res.data;
+            setUser(loggedUser);
+            try {
+              localStorage.setItem('agrigraph_user', JSON.stringify(loggedUser));
+            } catch (error) {
+              console.error('[AuthContext] Failed to write user to localStorage:', error);
+            }
+          }
         })
-        .catch(() => {
+        .catch((error) => {
+          console.error('[AuthContext] Session validation failed:', error);
           logout();
         })
-        .finally(() => {
-          setLoading(false);
-        });
+        .finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
@@ -56,7 +68,6 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const res = await authAPI.login(email, password);
-
     const { access_token, user: loggedUser } = res.data;
 
     if (!access_token || access_token === 'undefined') {
@@ -66,18 +77,18 @@ export const AuthProvider = ({ children }) => {
     setToken(access_token);
     setUser(loggedUser);
 
-    localStorage.setItem('agrigraph_token', access_token);
-    localStorage.setItem(
-      'agrigraph_user',
-      JSON.stringify(loggedUser)
-    );
+    try {
+      localStorage.setItem('agrigraph_token', access_token);
+      localStorage.setItem('agrigraph_user', JSON.stringify(loggedUser));
+    } catch (error) {
+      console.error('[AuthContext] Failed to save authentication to localStorage:', error);
+    }
 
     return loggedUser;
   };
 
   const signup = async (userData) => {
     const res = await authAPI.signup(userData);
-
     const { access_token, user: newUser } = res.data;
 
     if (!access_token || access_token === 'undefined') {
@@ -87,11 +98,12 @@ export const AuthProvider = ({ children }) => {
     setToken(access_token);
     setUser(newUser);
 
-    localStorage.setItem('agrigraph_token', access_token);
-    localStorage.setItem(
-      'agrigraph_user',
-      JSON.stringify(newUser)
-    );
+    try {
+      localStorage.setItem('agrigraph_token', access_token);
+      localStorage.setItem('agrigraph_user', JSON.stringify(newUser));
+    } catch (error) {
+      console.error('[AuthContext] Failed to save authentication to localStorage:', error);
+    }
 
     return newUser;
   };
@@ -100,8 +112,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
 
-    localStorage.removeItem('agrigraph_token');
-    localStorage.removeItem('agrigraph_user');
+    try {
+      localStorage.removeItem('agrigraph_token');
+      localStorage.removeItem('agrigraph_user');
+    } catch (error) {
+      console.error('[AuthContext] Failed to clear localStorage during logout:', error);
+    }
   };
 
   return (
