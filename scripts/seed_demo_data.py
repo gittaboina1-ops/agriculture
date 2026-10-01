@@ -2,6 +2,9 @@ import os
 import sys
 import pandas as pd
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def seed_neo4j():
     """
@@ -9,16 +12,38 @@ def seed_neo4j():
     Safe to run repeatedly.
     """
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    user = os.getenv("NEO4J_USER", "neo4j")
+    user = os.getenv("NEO4J_USER", os.getenv("NEO4J_USERNAME", "neo4j"))
     password = os.getenv("NEO4J_PASSWORD", "password")
 
+    uris_to_try = [uri]
+    if uri.startswith("neo4j+s://"):
+        uris_to_try.append(uri.replace("neo4j+s://", "neo4j+ssc://"))
+
     print(f"Connecting to Neo4j at {uri}...")
+    driver = None
+    for u in uris_to_try:
+        try:
+            from neo4j import GraphDatabase
+            driver = GraphDatabase.driver(u, auth=(user, password))
+            with driver.session() as session:
+                session.run("RETURN 1")
+            print(f"Connected to Neo4j successfully at {u}!")
+            break
+        except Exception as e:
+            if driver:
+                try:
+                    driver.close()
+                except Exception:
+                    pass
+                driver = None
+
+    if not driver:
+        print("Notice: Neo4j server is currently offline or unreachable.")
+        return
+
     try:
-        from neo4j import GraphDatabase
-        driver = GraphDatabase.driver(uri, auth=(user, password))
         with driver.session() as session:
-            session.run("RETURN 1")
-            print("Connected to Neo4j successfully!")
+
 
             # Create Constraints
             constraints = [

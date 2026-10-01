@@ -21,7 +21,7 @@ class MongoService:
     def _init_mongo(self):
         try:
             import pymongo
-            self.client = pymongo.MongoClient(settings.MONGODB_URI, serverSelectionTimeoutMS=1000)
+            self.client = pymongo.MongoClient(settings.MONGODB_URI, serverSelectionTimeoutMS=5000)
             self.client.server_info()
             self.connected = True
             self.mongo_error_reason = None
@@ -30,6 +30,7 @@ class MongoService:
             self.connected = False
             self.mongo_error_reason = str(e)
             logger.info(f"MongoDB live instance unavailable ({e}). Operating in resilient application mode.")
+
 
     def log_query(self, query_record: Dict[str, Any]):
         if self.connected and self.client:

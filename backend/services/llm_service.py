@@ -4,6 +4,9 @@ import json
 import logging
 import urllib.request
 import urllib.error
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger("llm_service")
 
@@ -12,42 +15,44 @@ class LLMAnswerService:
         pass
 
     def _call_gemini(self, system_instruction: str, user_prompt: str, api_key: str) -> Optional[Dict[str, Any]]:
-        """Invokes Google Gemini 1.5 Flash with structured JSON output and safe logging."""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        payload = {
-            "system_instruction": {
-                "parts": [{"text": system_instruction}]
-            },
-            "contents": [
-                {"role": "user", "parts": [{"text": user_prompt}]}
-            ],
-            "generationConfig": {
-                "temperature": 0.2,
-                "response_mime_type": "application/json"
+        """Invokes Google Gemini Flash with structured JSON output and safe logging."""
+        for model in ["gemini-flash-lite-latest", "gemini-flash-latest"]:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {
+                "system_instruction": {
+                    "parts": [{"text": system_instruction}]
+                },
+                "contents": [
+                    {"role": "user", "parts": [{"text": user_prompt}]}
+                ],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "response_mime_type": "application/json"
+                }
             }
-        }
-        # Safe log: never log the raw key or huge text
-        logger.info("[LLM] Provider: Gemini | Model: gemini-1.5-flash | Request sent: YES")
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                if resp.status == 200:
-                    raw_body = resp.read().decode("utf-8")
-                    data = json.loads(raw_body)
-                    text_out = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    logger.info("[LLM] Provider: Gemini | Model: gemini-1.5-flash | Response received: YES")
-                    parsed = json.loads(text_out)
-                    if "agricultural_insight" in parsed and "relevant_factors" in parsed:
-                        return parsed
-        except urllib.error.HTTPError as he:
-            logger.warning(f"[LLM] Gemini API HTTP Error {he.code}: {he.reason}")
-        except Exception as e:
-            logger.warning(f"[LLM] Gemini API call failed: {e}")
+            # Safe log: never log the raw key or huge text
+            logger.info(f"[LLM] Provider: Gemini | Model: {model} | Request sent: YES")
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=12) as resp:
+                    if resp.status == 200:
+                        raw_body = resp.read().decode("utf-8")
+                        data = json.loads(raw_body)
+                        text_out = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        logger.info(f"[LLM] Provider: Gemini | Model: {model} | Response received: YES")
+                        parsed = json.loads(text_out)
+                        if "agricultural_insight" in parsed and "relevant_factors" in parsed:
+                            parsed["_model"] = model
+                            return parsed
+            except urllib.error.HTTPError as he:
+                logger.warning(f"[LLM] Gemini API ({model}) HTTP Error {he.code}: {he.reason}")
+            except Exception as e:
+                logger.warning(f"[LLM] Gemini API ({model}) call failed: {e}")
         return None
 
     def _call_openai(self, system_instruction: str, user_prompt: str, api_key: str) -> Optional[Dict[str, Any]]:
@@ -88,100 +93,21 @@ class LLMAnswerService:
             logger.warning(f"[LLM] OpenAI API call failed: {e}")
         return None
 
-    def generate_grounded_answer(
+    def _generate_original_system_outcome(
         self,
         query: str,
         intent: str,
         context: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
-        Generates an evidence-grounded response strictly constrained to the retrieved context.
-        If an external LLM API is available and valid, queries the LLM and reports mode='llm'.
-        If unavailable or on failure, falls back to deterministic rule engine and truthfully
-        reports mode='grounded_rule_engine', provider='fallback'.
+        Generates the existing system outcome using the deterministic rule engine.
+        This represents the baseline system outcome before any LLM processing.
         """
-        gemini_key = os.getenv("GEMINI_API_KEY")
-        openai_key = os.getenv("OPENAI_API_KEY")
-
         crop = context.get("matched_crop", "Tomato")
-        entities = context.get("entities", [])
         graph_evidence = context.get("graph_evidence", [])
         sources = context.get("sources", [])
-        conflicts = context.get("conflicts", [])
-        data_quality = context.get("data_quality_warnings", [])
         soil_records = context.get("soil_records", [])
 
-        # Build prompt & system instruction for live LLM if key present
-        if gemini_key or openai_key:
-            system_instruction = (
-                "You are AgriGraph, an expert agricultural AI assistant. You answer farmer queries STRICTLY "
-                "based on the provided agricultural knowledge graph context, verified research citations, and calibrated telemetry.\n"
-                "CRITICAL CONSTRAINTS:\n"
-                "1. Answer ONLY from supplied context. Do NOT extrapolate or hallucinate unprovided treatments, thresholds, or facts.\n"
-                "2. Preserve all scientific names (e.g. Alternaria solani), citations (e.g. DOC_001, DOC_007), and sensor IDs (e.g. SENSOR_CORRUPT_TEMP_99).\n"
-                "3. Explicitly surface any conflicting evidence transparently.\n"
-                "4. Explicitly state that rejected/corrupted sensor telemetry was excluded from reasoning.\n"
-                "5. Return valid JSON only with keys: 'agricultural_insight' (string) and 'relevant_factors' (list of strings)."
-            )
-
-            context_summary = {
-                "query": query,
-                "intent": intent,
-                "crop": crop,
-                "entities": entities,
-                "verified_sources": [
-                    {"id": s.get("source_id"), "title": s.get("title"), "type": s.get("source_type"), "summary": s.get("summary")}
-                    for s in sources
-                ],
-                "active_conflicts": [
-                    {"claim": c.get("claim_text"), "status": c.get("status"), "notes": c.get("notes")}
-                    for c in conflicts
-                ],
-                "excluded_sensor_data": [
-                    {"sensor_id": w.get("sensor_id"), "metric": w.get("metric"), "rejected_value": w.get("rejected_value"), "reason": w.get("reason")}
-                    for w in data_quality
-                ],
-                "soil_data": soil_records
-            }
-
-            user_prompt = (
-                f"Farmer Query: {query}\n"
-                f"Context Data:\n{json.dumps(context_summary, indent=2)}\n\n"
-                "Generate a professional, evidence-backed answer and list of key factors adhering to the constraints."
-            )
-
-            # Try Gemini first
-            if gemini_key:
-                llm_res = self._call_gemini(system_instruction, user_prompt, gemini_key)
-                if llm_res:
-                    return {
-                        "mode": "llm",
-                        "provider": "gemini",
-                        "model": "gemini-1.5-flash",
-                        "fallback_reason": None,
-                        "agricultural_insight": llm_res["agricultural_insight"],
-                        "relevant_factors": llm_res["relevant_factors"]
-                    }
-                fallback_reason = "Gemini API call failed or timed out"
-            elif openai_key:
-                llm_res = self._call_openai(system_instruction, user_prompt, openai_key)
-                if llm_res:
-                    return {
-                        "mode": "llm",
-                        "provider": "openai",
-                        "model": "gpt-4o-mini",
-                        "fallback_reason": None,
-                        "agricultural_insight": llm_res["agricultural_insight"],
-                        "relevant_factors": llm_res["relevant_factors"]
-                    }
-                fallback_reason = "OpenAI API call failed or timed out"
-        else:
-            fallback_reason = "API key not configured"
-
-        # Deterministic Grounded Fallback Engine
-        logger.info(f"[LLM] Using grounded rule engine fallback (Reason: {fallback_reason})")
-
-        # Format contextual evidence
         if intent == "SOIL_SUITABILITY":
             if soil_records:
                 s = soil_records[0]
@@ -319,9 +245,126 @@ class LLMAnswerService:
             "mode": "grounded_rule_engine",
             "provider": "fallback",
             "model": None,
-            "fallback_reason": fallback_reason,
+            "fallback_reason": None,
             "agricultural_insight": insight,
             "relevant_factors": factors
         }
+
+    def generate_grounded_answer(
+        self,
+        query: str,
+        intent: str,
+        context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Generates an evidence-grounded response.
+        1. FIRST generates the baseline system outcome from existing logic.
+        2. THEN, if LLM configuration exists, passes ONLY that existing system outcome and
+           retrieved context to the LLM presentation layer to reformat as a natural user response.
+        3. If LLM processing fails or is unavailable, returns the exact original system outcome.
+        """
+        # Step 1: Generate existing system outcome FIRST
+        original_outcome = self._generate_original_system_outcome(query, intent, context)
+
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        openai_key = os.getenv("OPENAI_API_KEY")
+
+        if not (gemini_key or openai_key):
+            fallback_res = dict(original_outcome)
+            fallback_res["fallback_reason"] = "API key not configured"
+            return fallback_res
+
+        # Step 2: System prompt for LLM as processing/presentation layer
+        system_instruction = (
+            "You are a response generation layer for an existing retrieval system.\n\n"
+            "Use ONLY the information provided in the context and system outcome.\n"
+            "Do not add facts from your own knowledge.\n"
+            "Do not invent information.\n"
+            "Do not perform retrieval.\n"
+            "Do not assume missing information.\n"
+            "If the supplied information is insufficient, clearly state that the available retrieved information does not contain enough information.\n\n"
+            "Your task is only to transform the supplied information into a clear, accurate and user-friendly response.\n"
+            "Return valid JSON only with keys: 'agricultural_insight' (string) and 'relevant_factors' (list of strings)."
+        )
+
+        crop = context.get("matched_crop", "Tomato")
+        entities = context.get("entities", [])
+        sources = context.get("sources", [])
+        conflicts = context.get("conflicts", [])
+        data_quality = context.get("data_quality_warnings", [])
+        soil_records = context.get("soil_records", [])
+
+        context_summary = {
+            "query": query,
+            "intent": intent,
+            "crop": crop,
+            "entities": entities,
+            "existing_system_outcome": {
+                "agricultural_insight": original_outcome["agricultural_insight"],
+                "relevant_factors": original_outcome["relevant_factors"]
+            },
+            "verified_sources": [
+                {"id": s.get("source_id"), "title": s.get("title"), "type": s.get("source_type"), "summary": s.get("summary")}
+                for s in sources
+            ],
+            "active_conflicts": [
+                {"claim": c.get("claim_text"), "status": c.get("status"), "notes": c.get("notes")}
+                for c in conflicts
+            ],
+            "excluded_sensor_data": [
+                {"sensor_id": w.get("sensor_id"), "metric": w.get("metric"), "rejected_value": w.get("rejected_value"), "reason": w.get("reason")}
+                for w in data_quality
+            ],
+            "soil_data": soil_records
+        }
+
+        user_prompt = (
+            f"User Question: {query}\n\n"
+            f"Existing System Outcome:\n"
+            f"Insight: {original_outcome['agricultural_insight']}\n"
+            f"Factors: {json.dumps(original_outcome['relevant_factors'], indent=2)}\n\n"
+            f"Retrieved Information & Context:\n"
+            f"{json.dumps(context_summary, indent=2)}\n\n"
+            "Transform the supplied information and existing outcome into a clear, accurate, and user-friendly natural language response."
+        )
+
+        # Step 3: Invoke LLM with complete fallback safety
+        try:
+            llm_res = None
+            provider_name = None
+            model_name = None
+
+            if gemini_key:
+                provider_name = "gemini"
+                llm_res = self._call_gemini(system_instruction, user_prompt, gemini_key)
+                model_name = llm_res.get("_model", "gemini-flash-lite-latest") if isinstance(llm_res, dict) else "gemini-flash-lite-latest"
+            elif openai_key:
+                provider_name = "openai"
+                model_name = "gpt-4o-mini"
+                llm_res = self._call_openai(system_instruction, user_prompt, openai_key)
+
+            if llm_res and isinstance(llm_res, dict) and llm_res.get("agricultural_insight") and str(llm_res.get("agricultural_insight")).strip():
+                factors = llm_res.get("relevant_factors")
+                if not isinstance(factors, list) or len(factors) == 0:
+                    factors = original_outcome["relevant_factors"]
+                return {
+                    "mode": "llm",
+                    "provider": provider_name,
+                    "model": model_name,
+                    "fallback_reason": None,
+                    "agricultural_insight": str(llm_res["agricultural_insight"]).strip(),
+                    "relevant_factors": factors
+                }
+            else:
+                logger.warning("[LLM] LLM response empty or malformed. Returning original system outcome.")
+                fallback_res = dict(original_outcome)
+                fallback_res["fallback_reason"] = "Empty or malformed LLM response"
+                return fallback_res
+
+        except Exception as e:
+            logger.warning(f"[LLM] LLM processing layer exception: {e}. Returning original system outcome.")
+            fallback_res = dict(original_outcome)
+            fallback_res["fallback_reason"] = f"LLM exception: {str(e)}"
+            return fallback_res
 
 llm_service = LLMAnswerService()

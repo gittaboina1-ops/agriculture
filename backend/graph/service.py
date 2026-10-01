@@ -19,22 +19,39 @@ class KnowledgeGraphService:
         self._build_in_memory_graph()
 
     def _init_neo4j(self):
-        try:
-            from neo4j import GraphDatabase
-            self.driver = GraphDatabase.driver(
-                settings.NEO4J_URI,
-                auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
-            )
-            # Verify connectivity
-            with self.driver.session() as session:
-                session.run("RETURN 1 AS test")
-            self.connected_to_neo4j = True
-            self.neo4j_error_reason = None
-            logger.info("Successfully connected to live Neo4j instance.")
-        except Exception as e:
-            self.connected_to_neo4j = False
-            self.neo4j_error_reason = str(e)
-            logger.info(f"Neo4j live instance unavailable ({e}). Using full in-memory resilient graph engine.")
+        from neo4j import GraphDatabase
+        uris_to_try = [settings.NEO4J_URI]
+        if settings.NEO4J_URI.startswith("neo4j+s://"):
+            uris_to_try.append(settings.NEO4J_URI.replace("neo4j+s://", "neo4j+ssc://"))
+        elif settings.NEO4J_URI.startswith("bolt+s://"):
+            uris_to_try.append(settings.NEO4J_URI.replace("bolt+s://", "bolt+ssc://"))
+
+        last_error = None
+        for uri in uris_to_try:
+            try:
+                self.driver = GraphDatabase.driver(
+                    uri,
+                    auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD)
+                )
+                with self.driver.session() as session:
+                    session.run("RETURN 1 AS test")
+                self.connected_to_neo4j = True
+                self.neo4j_error_reason = None
+                logger.info(f"Successfully connected to live Neo4j instance at {uri}.")
+                return
+            except Exception as e:
+                if self.driver:
+                    try:
+                        self.driver.close()
+                    except Exception:
+                        pass
+                self.driver = None
+                last_error = e
+
+        self.connected_to_neo4j = False
+        self.neo4j_error_reason = str(last_error) if last_error else "Failed to connect to Neo4j"
+        logger.info(f"Neo4j live instance unavailable ({last_error}). Using full in-memory resilient graph engine.")
+
 
     def sync_to_neo4j(self):
         """Seeds or updates all in-memory nodes and edges into the live Neo4j instance."""
