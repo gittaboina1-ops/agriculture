@@ -17,52 +17,14 @@ services:
         destination: "/index.html"
         action: "rewrite"
 
-  # FastAPI Backend on Render (behind Cloudflare Tunnel)
-  - type: web
-    name: agriculture-backend
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
-    
-    # Backend environment variables for CORS and database connections
-    envVars:
-      - key: FRONTEND_URL
-        value: https://agriculture-frontend.onrender.com
-      - key: ALLOWED_ORIGINS
-        value: https://agriculture-frontend.onrender.com
-      # Neo4j configuration (from .env.example)
-      - key: NEO4J_URI
-        value: neo4j+s://2328608d.databases.neo4j.io
-      - key: NEO4J_USER
-        value: 2328608d
-      - key: NEO4J_PASSWORD
-        sync: false
-      # MongoDB configuration
-      - key: MONGODB_URI
-        sync: false
-      - key: MONGODB_DB
-        value: agrigraph_db
-      # Security & Auth
-      - key: JWT_SECRET
-        sync: false
-      - key: JWT_ALGORITHM
-        value: HS256
-      - key: ACCESS_TOKEN_EXPIRE_MINUTES
-        value: 1440
-      - key: ADMIN_SIGNUP_CODE
-        value: AGRIGRAPH_ADMIN_2026
-      # NLP / Embeddings
-      - key: EMBEDDING_MODEL_NAME
-        value: sentence-transformers/all-MiniLM-L6-v2
-      # Fallback mode
-      - key: USE_MOCK_FALLBACK
-        value: "true"
-
-# When deployed, ensure these environment variables are set in Render:
-# Backend service:
-#   - NEO4J_PASSWORD (secret)
-#   - MONGODB_URI (secret)
-#   - JWT_SECRET (generate a strong random secret, e.g., openssl rand -hex 32)
-#
-# Frontend service:
-#   - VITE_API_URL (already set in render.yaml above)
+# IMPORTANT DEPLOYMENT ARCHITECTURE:
+# This repository uses a LOCAL FastAPI backend via Cloudflare Tunnel.
+# 
+# The backend is NOT deployed as a Render service.
+# 
+# Instead:
+# 1. Local backend runs: python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+# 2. Cloudflare Tunnel exposes it at: https://brain-trails-injection-analog.trycloudflare.com
+# 3. Frontend on Render calls: https://brain-trails-injection-analog.trycloudflare.com/api
+# 
+# If the Cloudflare Tunnel URL changes or the backend is moved, update VITE_API_URL above.
