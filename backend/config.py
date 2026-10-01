@@ -21,6 +21,8 @@ class Settings(BaseModel):
     ADMIN_SIGNUP_CODE: str = os.getenv("ADMIN_SIGNUP_CODE", "AGRIGRAPH_ADMIN_2026")
     DEFAULT_ADMIN_EMAIL: str = os.getenv("DEFAULT_ADMIN_EMAIL", "vundhyalaakeshreddy@gmail.com")
     DEFAULT_ADMIN_PASSWORD: str = os.getenv("DEFAULT_ADMIN_PASSWORD", "reddy@123")
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", os.getenv("CLIENT_URL", "http://localhost:5173"))
+    ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")
 
 settings = Settings()
 

@@ -20,10 +20,35 @@ app = FastAPI(
     description="AgriGraph: Dynamic Agricultural Knowledge Graph with Source Provenance, Conflict Detection & Sensor Validation"
 )
 
-# Enable CORS for React frontend
+# Environment-aware CORS configuration for local development & production deployment (Render)
+cors_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
+frontend_url = os.getenv("FRONTEND_URL") or os.getenv("CLIENT_URL")
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+
+if frontend_url:
+    for url in frontend_url.split(","):
+        cleaned = url.strip().rstrip("/")
+        if cleaned and cleaned not in cors_origins:
+            cors_origins.append(cleaned)
+
+if allowed_origins_env:
+    for url in allowed_origins_env.split(","):
+        cleaned = url.strip().rstrip("/")
+        if cleaned and cleaned not in cors_origins:
+            cors_origins.append(cleaned)
+
+if "*" not in cors_origins and not frontend_url and not allowed_origins_env:
+    cors_origins.append("*")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,7 +79,7 @@ def health_check():
                 "uri": settings.NEO4J_URI,
                 "live_nodes": live_neo4j_stats["nodes"],
                 "live_edges": live_neo4j_stats["edges"],
-                "diagnostic": graph_service.neo4j_error_reason or "Connected to live Neo4j instance at bolt://localhost:7687"
+                "diagnostic": graph_service.neo4j_error_reason or f"Connected to live Neo4j instance at {settings.NEO4J_URI}"
             },
             "mongodb": {
                 "status": mongo_status,
